@@ -3,6 +3,7 @@ const Redis = require('ioredis');
 
 // Configure Redis client
 const redisUrl = process.env.REDIS_URL || '0.0.0.0:6379';
+const port = process.env.PORT || 3000;
 //default:bigredisbigresults23@redistack.fanarena.com:6379
 const redis = new Redis(`redis://${redisUrl}`);
 
@@ -46,7 +47,7 @@ fastify.post('/return', async (request, reply) => {
 // Start server
 const start = async () => {
     try {
-        await fastify.listen(3000);
+        await fastify.listen(port);
         fastify.log.info(`server listening on ${fastify.server.address().port}`);
     } catch (err) {
         fastify.log.error(err);
