@@ -44,6 +44,10 @@ fastify.post('/return', async (request, reply) => {
     return { status: 'success', message: data };
 });
 
+fastify.get('/', async (request, reply) => {
+    return { hello: 'world' };
+});
+
 // Start server
 const start = async () => {
     try {
