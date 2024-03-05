@@ -12,7 +12,9 @@ const redis = new Redis(`redis://${redisUrl}`);
 
 app.post('/activate', jsonParser, async (request, res) => {
   //TODO validate auth header
-  console.log(request.body);
+  console.log('New Request \n ----')
+  console.log('headers', request.headers);
+  console.log('body', request.body);
   const eventId = "01";
   const score = Date.now();
 
