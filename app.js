@@ -17,14 +17,17 @@ const score = Date.now();
 app.post('/webhooks/:eventId', jsonParser, async (request, res) => {
   console.log(`Webhook ${eventId} Request \n ----`)
     //TODO validate auth header
-  // console.log('headers', request.headers);
-  // console.log('body', request.body);
+  console.log('headers', request.headers);
+  console.log('body', request.body);
 
   const data = request.body;
 
   data.values.rows.forEach( row => {
-    console.log(row);
+    //row.id === transation_row_id
+    //quantity
+    //transaction_id
     console.log(`Sale:${data.values.event.id}:${data.values.location.id}`)
+    console.log(row);
   })
     
   // const data = Array.isArray(request.body) ? request.body : [request.body];
@@ -49,6 +52,21 @@ app.post('/webhooks/:eventId', jsonParser, async (request, res) => {
 
   res.send({ status: 'SUCCESS', message: 'Data saved to Redis' });
 });
+
+//REFUND
+//https://api.weezevent.com/pay/v2/organizations/485376/transactions/actions
+// {
+//   "type": "CANCEL_TRANSACTION_PARTIALLY_REFUNDABLES",
+//   "config": {
+//     "rows": [
+//       {
+//         "id":  {transaction_row_id},
+//         "quantity":  {quantity}
+//       }
+//     ],
+//     "transaction_id":  {transaction_id}
+//   }
+// }
 
 app.post('/activate', jsonParser, async (request, res) => {
   console.log('New Request \n ----')
