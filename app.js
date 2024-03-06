@@ -17,8 +17,15 @@ const score = Date.now();
 app.post('/webhooks/:eventId', jsonParser, async (request, res) => {
   console.log(`Webhook ${eventId} Request \n ----`)
     //TODO validate auth header
-  console.log('headers', request.headers);
-  console.log('body', request.body);
+  // console.log('headers', request.headers);
+  // console.log('body', request.body);
+
+  const data = request.body;
+
+  data.values.rows.forEach( row => {
+    console.log(row);
+    console.log(`Sale:${data.values.event.id}:${data.values.location.id}`)
+  })
     
   // const data = Array.isArray(request.body) ? request.body : [request.body];
 
