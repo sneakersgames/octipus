@@ -15,25 +15,31 @@ const eventId = "01";
 const score = Date.now();
 
 app.post('/webhooks/:eventId', jsonParser, async (request, res) => {
-  console.log(`Webhook ${eventId} Request \n ----`)
-    //TODO validate auth header
+  //TODO config weezevent
+  //eventId and locationId should exist in our configuration
+  console.log(`Webhook ${eventId} Request ${request.protocol}://${request.get('host')}${request.originalUrl} \n ----`)
+  //TODO validate auth header
   console.log('headers', request.headers);
   console.log('body', request.body);
 
   const data = request.body;
 
-  data.values.rows.forEach( row => {
-    //row.id === transation_row_id
-    //quantity
-    //transaction_id
-    console.log(`Sale:${data.values.event.id}:${data.values.location.id}`)
-    console.log(row);
-  })
-    
-  // const data = Array.isArray(request.body) ? request.body : [request.body];
+  //TODO catch if it returns more than one row
+  // data.values.rows.forEach(row => { })
+  const row = data.values.rows[0];
+  const date = new Date(data.values.validated);
 
-  // data.forEach(async (epc) => {
-  //   //TODO Change to stream to be able to read all scans for a POSID in a certain range 
+  const key = `Sale:${data.values.event.id}:${data.values.location.id}`;
+  const value = {
+    soldAt: date.getTime() / 1000,
+    transaction_id: data.id,
+    transaction_row_id: row.id,
+    quantity: row.payments[0].quantity      
+  }
+  console.log(`New sale at ${data.values.validated}`);
+  console.log(key, value);
+  //TODO Redis save
+  //TODO Change to stream to be able to read all scans for a POSID in a certain range 
   //   await redis.zadd(`SCAN:${eventId}:${epc.POSID}`, score, JSON.stringify(epc));
   //   await redis.hset(`PACKAGE:${eventId}:${epc.EPC}`, {
   //     EPC: epc.EPC,
@@ -44,11 +50,8 @@ app.post('/webhooks/:eventId', jsonParser, async (request, res) => {
   //     eventId: eventId,
   //     status: 'scanned'
   //   }); // JSON.stringify(data));
-
   //   // await redis.xadd(`SCAN:${eventId}:${data.POSID}`, '*', 'EPC', data.EPC, 'first_seen', data.first_seen, 'last_seen', data.last_seen, 'count', data.count);
-
-  //   // TODO send amqp message to try to match last sales (EPC) of this POSID 
-  // });
+  // TODO send amqp message to try to match last sales (EPC) of this POSID 
 
   res.send({ status: 'SUCCESS', message: 'Data saved to Redis' });
 });
