@@ -11,7 +11,7 @@ const redisUrl = process.env.REDIS_URL || 'default:bigredisbigresults23@redis-go
 const redis = new Redis(`redis://${redisUrl}`);
 
 //TODO GET FROM ENV VARS
-// const eventId = "01";
+const eventId = "01";
 const score = Date.now();
 
 app.post('/webhooks/:eventId', jsonParser, async (request, res) => {
@@ -39,6 +39,11 @@ app.post('/webhooks/:eventId', jsonParser, async (request, res) => {
   }
   console.log(`New sale at ${data.values.validated}`);
   console.log(key, value);
+
+  const message = Object.assign({}, value, {POSID: data.values.location.id});
+  console.log(`Send message ${message}`);
+  //TODO redis rpush JSON.stringify(message)
+
   //TODO Redis save
   //TODO Change to stream to be able to read all scans for a POSID in a certain range 
   //   await redis.zadd(`SCAN:${eventId}:${epc.POSID}`, score, JSON.stringify(epc));
