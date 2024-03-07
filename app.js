@@ -11,7 +11,7 @@ const redisUrl = process.env.REDIS_URL || 'default:bigredisbigresults23@redis-go
 const redis = new Redis(`redis://${redisUrl}`);
 
 //TODO GET FROM ENV VARS
-const eventId = "01";
+// const eventId = "01";
 const score = Date.now();
 
 app.post('/webhooks/:eventId', jsonParser, async (request, res) => {
@@ -28,10 +28,11 @@ app.post('/webhooks/:eventId', jsonParser, async (request, res) => {
   // data.values.rows.forEach(row => { })
   const row = data.values.rows[0];
   const date = new Date(data.values.validated);
+  //POS_EVENT_ID = data.values.event.id
 
   const key = `Sale:${data.values.event.id}:${data.values.location.id}`;
   const value = {
-    soldAt: date.getTime() / 1000,
+    soldAt: date.getTime(),//milliseconds
     transaction_id: data.id,
     transaction_row_id: row.id,
     quantity: row.payments[0].quantity      
