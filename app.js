@@ -15,27 +15,23 @@ const redis = new Redis(`redis://${redisUrl}`);
 app.post('/webhooks/:eventName', jsonParser, async (request, res) => {
   //TODO config weezevent
   //eventId and locationId should exist in our configuration
-    // const ENV_DATA = await redis.get("ENV_DATA");    
+  const eventName = 'FTIKortrijk';  
+  // const ENV_DATA = await redis.get("ENV_DATA");    
   // const POS_DATA = JSON.parse(ENV_DATA).find(data => data.POSID === request.body.POSID);
   // console.log('POS_DATA', POS_DATA);
   // const eventId = POS_DATA.eventId;
 
-  const eventName = 'FTIKortrijk';  
-
-  console.log(`Webhook ${eventName} Request ${request.protocol}://${request.get('host')}${request.originalUrl} \n ----`)
   //TODO validate auth header
-  //TODO save request to logging
-  console.log('headers', request.headers);
-  console.log('body', request.body);
-
-  console.log(JSON.stringify(request.body))
+  console.log(`Webhook ${eventName} Request ${request.protocol}://${request.get('host')}${request.originalUrl} \n ----`)
+  console.log('headers', JSON.stringify(request.headers));
+  console.log('body', JSON.stringify(request.body))
 
   const data = request.body;
+  const soldAt = new Date(data.values.validated).getTime();
 
   //TODO catch if it returns more than one row
   // data.values.rows.forEach(row => { })
   const row = data.values.rows[0];
-  const date = new Date(data.values.validated);
 
   //VALIDATE
   //POS_EVENT_ID = data.values.event.id?
@@ -43,12 +39,12 @@ app.post('/webhooks/:eventName', jsonParser, async (request, res) => {
 
   const key = `SALE:${data.values.event.id}:${data.values.location.id}`;
   const value = {
-    soldAt: date.getTime(),//milliseconds
+    soldAt: soldAt,//milliseconds
     transaction_id: data.id,
     transaction_row_id: row.id,
     quantity: row.payments[0].quantity      
   }
-  console.log(`New sale at ${data.values.validated}`);
+  console.log(`New sale at ${soldAt} - ${data.values.validated}`);
   console.log(key, value);
 
   //TODO Redis save
@@ -61,9 +57,9 @@ app.post('/webhooks/:eventName', jsonParser, async (request, res) => {
   // });
   //https://chat.openai.com/c/85148770-5e3c-4ec8-973a-e5e31d67fb69
 
-  await redis.zadd(key, data.values.validated, JSON.stringify(value));
+  await redis.zadd(key, soldAt, JSON.stringify(value));
 
-  await redis.hset(`MATCHED:${key}:${value.transaction_id}`, 'quantity', value.qauantity, 'status', 'pending', 'matched', 0);
+  await redis.hset(`MATCHED:${key}:${value.transaction_id}`, 'soldAt', soldAt, 'quantity', value.qauantity, 'status', 'pending', 'matched', 0);
 
   res.send({ status: 'SUCCESS', message: 'Data saved to Redis' });
 });
@@ -75,8 +71,8 @@ app.post('/activate', jsonParser, async (request, res) => {
     console.log('New Request \n ----')
     //TODO validate auth header
     //TODO save request to logging
-    console.log('headers', request.headers);
-    console.log('body', request.body);
+    console.log('headers', JSON.stringify(request.headers));
+    console.log('body', JSON.stringify(request.body))
 
     const ENV_DATA = await redis.get("ENV_DATA");    
     const POS_DATA = JSON.parse(ENV_DATA).find(data => data.POSID === request.body.POSID);
