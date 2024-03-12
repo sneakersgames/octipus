@@ -20,7 +20,7 @@ app.post('/webhooks/:eventName', jsonParser, async (request, res) => {
   // console.log('POS_DATA', POS_DATA);
   // const eventId = POS_DATA.eventId;
 
-  const eventId = 'FTIKortrijk';  
+  const eventName = 'FTIKortrijk';  
 
   console.log(`Webhook ${eventName} Request ${request.protocol}://${request.get('host')}${request.originalUrl} \n ----`)
   //TODO validate auth header
