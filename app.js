@@ -10,6 +10,16 @@ const redisUrl = process.env.REDIS_URL || 'default:bigredisbigresults23@redis-go
 //default:bigredisbigresults23@redistack.fanarena.com:6379
 const redis = new Redis(`redis://${redisUrl}`);
 
+//TODO Improve Redis save
+// redis
+// .multi()
+// .set("foo", "bar")
+// .get("foo")
+// .exec((err, results) => {
+//   // results === [[null, 'OK'], [null, 'bar']]
+// });
+//https://chat.openai.com/c/85148770-5e3c-4ec8-973a-e5e31d67fb69
+
 //TODO check env_data.js script, either run it or throw error if no ENV_DATA key
 
 app.post('/webhooks/:eventName', jsonParser, async (request, res) => {
@@ -23,12 +33,12 @@ app.post('/webhooks/:eventName', jsonParser, async (request, res) => {
     // const eventId = POS_DATA.eventId;
 
     //TODO validate auth header
-    console.log(`Webhook ${eventName} Request ${request.protocol}://${request.get('host')}${request.originalUrl} \n ----`)
+    // console.log(`Webhook ${eventName} Request ${request.protocol}://${request.get('host')}${request.originalUrl} \n ----`)
+    console.log(`Webhook originalUrl ${request.originalUrl}`)
     console.log('headers', JSON.stringify(request.headers));
     console.log('body', JSON.stringify(request.body))
 
     const data = request.body;
-    const soldAt = new Date(data.values.validated).getTime();
 
     //TODO catch if it returns more than one row
     // data.values.rows.forEach(row => { })
@@ -40,27 +50,19 @@ app.post('/webhooks/:eventName', jsonParser, async (request, res) => {
 
     const key = `SALE:${data.values.event.id}:${data.values.location.id}`;
     const value = {
-      soldAt: soldAt,//milliseconds
+      soldAt: new Date(data.values.validated).getTime(),//milliseconds
       transaction_id: data.id,
       transaction_row_id: row.id,
       quantity: row.payments[0].quantity      
     }
-    console.log(`New sale at ${soldAt} - ${data.values.validated}`);
+    console.log(`New sale at ${value.soldAt} - ${data.values.validated}`);
     console.log(`Save to Redis ${key}, ${JSON.stringify(value)}`);
 
-    //TODO Improve Redis save
-    // redis
-    // .multi()
-    // .set("foo", "bar")
-    // .get("foo")
-    // .exec((err, results) => {
-    //   // results === [[null, 'OK'], [null, 'bar']]
-    // });
-    //https://chat.openai.com/c/85148770-5e3c-4ec8-973a-e5e31d67fb69
+    console.log("ZADD", key, value.soldAt, JSON.stringify(value))
+    await redis.zadd(key, value.soldAt, JSON.stringify(value));
 
-    await redis.zadd(key, soldAt, JSON.stringify(value));
-
-    await redis.hset(`MATCHED:${key}:${value.transaction_id}`, 'soldAt', soldAt, 'quantity', value.qauantity, 'status', 'pending', 'matched', 0);
+    console.log(`HSET UNMATCHED:${key}:${value.transaction_id}`, 'soldAt', value.soldAt, 'quantity', value.quantity, 'status', 'pending', 'matched', 0)
+    await redis.hset(`UNMATCHED:${key}:${value.transaction_id}`, 'soldAt', value.soldAt, 'quantity', value.quantity, 'status', 'pending', 'matched', 0);
 
     res.send({ status: 'SUCCESS', message: 'Data saved to Redis' });
   } catch (error) {
