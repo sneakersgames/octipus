@@ -26,7 +26,7 @@ app.post('/webhooks/:eventName', jsonParser, async (request, res) => {
   try {
     //TODO config weezevent
     //eventId and locationId should exist in our configuration
-    const eventName = 'FTIKortrijk';  
+    const eventId = 'FTIKortrijk';  
     // const ENV_DATA = await redis.get("ENV_DATA");    
     // const POS_DATA = JSON.parse(ENV_DATA).find(data => data.POSID === request.body.POSID);
     // console.log('POS_DATA', POS_DATA);
@@ -34,7 +34,7 @@ app.post('/webhooks/:eventName', jsonParser, async (request, res) => {
 
     //TODO validate auth header
     // console.log(`Webhook ${eventName} Request ${request.protocol}://${request.get('host')}${request.originalUrl} \n ----`)
-    console.log(`Webhook originalUrl ${request.originalUrl}`)
+    console.log(`Webhook originalUrl ${request.params.eventName} ${request.originalUrl}`)
     console.log('headers', JSON.stringify(request.headers));
     console.log('body', JSON.stringify(request.body))
 
@@ -49,20 +49,24 @@ app.post('/webhooks/:eventName', jsonParser, async (request, res) => {
     //QUANTITY IS BIGGER THAN 0?
 
     const key = `SALE:${data.values.event.id}:${data.values.location.id}`;
-    const value = {
-      soldAt: new Date(data.values.validated).getTime(),//milliseconds
+    const score = new Date(data.values.validated).getTime()
+    const payloadSale = {
+      soldAt: score,//milliseconds
       transaction_id: data.id,
       transaction_row_id: row.id,
-      quantity: row.payments[0].quantity      
+      quantity: row.payments[0].quantity,
+      status: 'pending',
+      matched: 0
     }
-    console.log(`New sale at ${value.soldAt} - ${data.values.validated}`);
-    console.log(`Save to Redis ${key}, ${JSON.stringify(value)}`);
+    console.log(`New sale at ${payloadSale.soldAt} - ${data.values.validated}`);
 
-    console.log("ZADD", key, value.soldAt, JSON.stringify(value))
-    await redis.zadd(key, value.soldAt, JSON.stringify(value));
+    const zadd = await redis.zadd(key, score, JSON.stringify(payloadSale));
+    //    console.log("ZADD", key, score, JSON.stringify(payloadSale));
+    console.log(zadd)
 
-    console.log(`HSET UNMATCHED:${key}:${value.transaction_id}`, 'soldAt', value.soldAt, 'quantity', value.quantity, 'status', 'pending', 'matched', 0)
-    await redis.hset(`UNMATCHED:${key}:${value.transaction_id}`, 'soldAt', value.soldAt, 'quantity', value.quantity, 'status', 'pending', 'matched', 0);
+    const hset = await redis.hset(`UNMATCHED:${key}:${payloadSale.transaction_id}`, payloadSale)//Object.entries(payloadEPC).flat());
+    // console.log("HSET", `UNMATCHED:${key}:${payloadSale.transaction_id}`, payloadSale)
+    console.log(hset);
 
     res.send({ status: 'SUCCESS', message: 'Data saved to Redis' });
   } catch (error) {
