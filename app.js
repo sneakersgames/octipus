@@ -19,14 +19,14 @@ app.post('/webhooks/:eventName', jsonParser, async (request, res) => {
   // const POS_DATA = JSON.parse(ENV_DATA).find(data => data.POSID === request.body.POSID);
   // console.log('POS_DATA', POS_DATA);
   // const eventId = POS_DATA.eventId;
-  
+
+  const eventId = 'FTIKortrijk';  
+
   console.log(`Webhook ${eventName} Request ${request.protocol}://${request.get('host')}${request.originalUrl} \n ----`)
   //TODO validate auth header
   //TODO save request to logging
   console.log('headers', request.headers);
   console.log('body', request.body);
-
-
 
   const data = request.body;
 
@@ -150,7 +150,7 @@ app.post('/activate', jsonParser, async (request, res) => {
             `HISTORY:${epc.EPC}`, 
             `${score}-${index}`, 
             'info',
-            `Scanned event ${eventId} at ${request.body.POSID}} at ${score} with ${epc.count} counts. First seen ${epc.first_seen}, last seen ${epc.last_seen}.`
+            `${eventId} SALE at ${request.body.POSID} with ${epc.count} counts. UTC ${score}, First seen ${epc.first_seen}, Last seen ${epc.last_seen}.`
             // Object.entries(payloadEPC).flat()
           );
 
