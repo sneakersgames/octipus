@@ -28,6 +28,8 @@ app.post('/webhooks/:eventName', jsonParser, async (request, res) => {
   console.log('headers', request.headers);
   console.log('body', request.body);
 
+  console.log(JSON.stringify(request.body))
+
   const data = request.body;
 
   //TODO catch if it returns more than one row
