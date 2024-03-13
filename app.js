@@ -10,6 +10,8 @@ const redisUrl = process.env.REDIS_URL || 'default:bigredisbigresults23@redis-go
 //default:bigredisbigresults23@redistack.fanarena.com:6379
 const redis = new Redis(`redis://${redisUrl}`);
 
+console.log(redis);
+
 //TODO Improve Redis save
 // redis
 // .multi()
@@ -62,11 +64,11 @@ app.post('/webhooks/:eventName', jsonParser, async (request, res) => {
 
     const zadd = await redis.zadd(key, score, JSON.stringify(payloadSale));
     //    console.log("ZADD", key, score, JSON.stringify(payloadSale));
-    console.log(zadd)
+    console.log('zadd redis insert', zadd)
 
     const hset = await redis.hset(`SALE:${key}:${payloadSale.transaction_id}`, payloadSale)//Object.entries(payloadEPC).flat());
     // console.log("HSET", `SALE:${key}:${payloadSale.transaction_id}`, payloadSale)
-    console.log(hset);
+    console.log('hset redis insert', hset);
 
     //TODO MESSAGE QUEUE
     const queuePush = await redis.rpush(`SALE_QUEUE:${eventId}`, JSON.stringify({locationId: data.values.location.id, payloadSale}));
