@@ -1,7 +1,6 @@
 const Redis = require('ioredis');
 // Configure Redis client
-const redisUrl = process.env.REDIS_URL || 'default:bigredisbigresults23@redis-goodless.fanarena.com:6379' //'0.0.0.0:6379';
-//default:bigredisbigresults23@redistack.fanarena.com:6379
+const redisUrl = 'default:bigredisbigresults23@redis-goodless.fanarena.com:6379'; // process.env.REDIS_URL || 'default:bigredisbigresults23@redis-goodless.fanarena.com:6379' //'0.0.0.0:6379';
 const redis = new Redis(`redis://${redisUrl}`);
 
 const env_data = JSON.stringify(

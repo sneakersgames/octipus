@@ -1,8 +1,7 @@
 //https://chat.openai.com/c/0c81b76a-f434-4e4e-a6c6-262fe79f97ef
 const Redis = require('ioredis');
 // Configure Redis client
-const redisUrl = process.env.REDIS_URL || 'default:bigredisbigresults23@redis-goodless.fanarena.com:6379' //'0.0.0.0:6379';
-//default:bigredisbigresults23@redistack.fanarena.com:6379
+const redisUrl = 'default:bigredisbigresults23@redis-goodless.fanarena.com:6379'; // process.env.REDIS_URL || 'default:bigredisbigresults23@redis-goodless.fanarena.com:6379' //'0.0.0.0:6379';
 const redis = new Redis(`redis://${redisUrl}`);
 
 async function getUnmatchedSalesBetween(eventId, POSID, score) {
