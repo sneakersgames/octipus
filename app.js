@@ -43,6 +43,8 @@ app.post('/webhooks/:eventName', jsonParser, async (request, res) => {
     // data.values.rows.forEach(row => { })
     const row = data.values.rows[0];
 
+    //TODO IMPORTANT should we handle updates?
+
     //VALIDATE
     //POS_EVENT_ID = data.values.event.id?
     //QUANTITY IS BIGGER THAN 0?
@@ -96,7 +98,10 @@ app.post('/activate', jsonParser, async (request, res) => {
 
     const currentTime = Date.now();
 
-    if(!POS_DATA) {
+    if(request.body.method === 'update') {
+      //TODO important - wat doen we hiermee?
+      console.log('Skipping update request for now')
+    } else if(!POS_DATA) {
       const errorMessage = `POSID ${request.body.POSID} is not known.`;
       console.error(errorMessage);
       throw new Error(errorMessage);
@@ -105,6 +110,9 @@ app.post('/activate', jsonParser, async (request, res) => {
 
       for (const [index, epc] of (tags || []).entries()) {
         try {
+
+          //todo remove this
+          console.log("EPC", epc.EPC);
 
           if (!epc.EPC.startsWith('330')) {
             const errorMessage = `EPC does not start with 330. ${epc.EPC}`;
@@ -185,7 +193,8 @@ app.post('/activate', jsonParser, async (request, res) => {
       }
 
     } else if (POS_DATA.type === 'bin') {
-      //todo return trigger
+      //todo important return trigger
+      res.send({ status: 'SUCCESS', message: 'BIN' });
     } else {      
       const errorMessage = `${POS_DATA.type} type not known.`;
       console.error(errorMessage);
