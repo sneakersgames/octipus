@@ -48,7 +48,7 @@ app.post('/webhooks/:eventName', jsonParser, async (request, res) => {
     //POS_EVENT_ID = data.values.event.id?
     //QUANTITY IS BIGGER THAN 0?
 
-    const key = `SALE:${data.values.event.id}:${data.values.location.id}`;
+    const key = `UNMATCHED:${data.values.event.id}:${data.values.location.id}`;
     const score = new Date(data.values.validated).getTime()
     const payloadSale = {
       soldAt: score,//milliseconds
@@ -64,9 +64,13 @@ app.post('/webhooks/:eventName', jsonParser, async (request, res) => {
     //    console.log("ZADD", key, score, JSON.stringify(payloadSale));
     console.log(zadd)
 
-    const hset = await redis.hset(`UNMATCHED:${key}:${payloadSale.transaction_id}`, payloadSale)//Object.entries(payloadEPC).flat());
-    // console.log("HSET", `UNMATCHED:${key}:${payloadSale.transaction_id}`, payloadSale)
+    const hset = await redis.hset(`SALE:${key}:${payloadSale.transaction_id}`, payloadSale)//Object.entries(payloadEPC).flat());
+    // console.log("HSET", `SALE:${key}:${payloadSale.transaction_id}`, payloadSale)
     console.log(hset);
+
+    //TODO MESSAGE QUEUE
+    const queuePush = await redis.rpush(`SALE_QUEUE:${eventId}`, JSON.stringify({locationId: data.values.location.id, payloadSale}));
+    console.log('queue push:', queuePush)
 
     res.send({ status: 'SUCCESS', message: 'Data saved to Redis' });
   } catch (error) {
@@ -166,32 +170,24 @@ app.post('/activate', jsonParser, async (request, res) => {
 
         } catch (innerError) {
           console.error('Error processing EPC:', innerError);
-          errorMessages.push(innerError.message); // Collect error message
+          errorMessages.push(innerError.message);
         }
       }
-
-      //TODO MESSAGE QUEUE
-      const queuePush = await redis.rpush(`SALE_QUEUE:${eventId}`, JSON.stringify({POS_DATA, body: request.body}));
-      console.log('queue push:', queuePush)
   
       // Final response
       if (errorMessages.length > 0) {
-        // Respond with success but include error messages
         res.send({ 
           status: 'PARTIAL_SUCCESS', 
           message: 'Some data saved to Redis, but there were errors.',
           errors: errorMessages 
         });
       } else {
-        // If there were no errors, respond with complete success
         res.send({ status: 'SUCCESS', message: 'All data saved to Redis' });
       }
 
     } else if (POS_DATA.type === 'bin') {
       //todo return trigger
-    } else {
-      //error queue
-      
+    } else {      
       const errorMessage = `${POS_DATA.type} type not known.`;
       console.error(errorMessage);
       throw new Error(errorMessage);
