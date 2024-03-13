@@ -5,7 +5,7 @@ const redisUrl = process.env.REDIS_URL || 'default:bigredisbigresults23@redis-go
 //default:bigredisbigresults23@redistack.fanarena.com:6379
 const redis = new Redis(`redis://${redisUrl}`);
 
-async function getUnmatchedSales(eventId, POSID) {
+async function getUnmatchedSalesBetween(eventId, POSID, score) {
   try {
     //TODO IMPORTANT REPLACE
     const key = `UNMATCHED:1:1`;//`UNMATCHED:${eventId}:${POSID}`
@@ -53,10 +53,8 @@ async function processMessage(eventId, message) {
     // const lastSync = await getLastSale(eventId, message.body.POSID, firstScan);
     // console.log("Last sync sales", lastSync);
 
-    const unmatchedSales = await getUnmatchedSales(eventId, message.body.POSID);
-    console.log("First unmatched sales", unmatchedSales);
-
-    
+    const unmatchedSale = await getUnmatchedSalesBetween(eventId, message.locationId, message.payloadSale.soldAt);
+    console.log("Unmatched sale", unmatchedSale);
 
     if(false) {
       const errorMessage = `${epc.EPC}`;
