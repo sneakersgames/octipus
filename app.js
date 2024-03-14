@@ -9,51 +9,36 @@ const Redis = require('ioredis');
 const redisUrl = 'default:bigredisbigresults23@redis-goodless.fanarena.com:6379'; // process.env.REDIS_URL || 'default:bigredisbigresults23@redis-goodless.fanarena.com:6379' //'0.0.0.0:6379';
 const redis = new Redis(`redis://${redisUrl}`);
 
-//TODO Improve Redis save
-// redis
-// .multi()
-// .set("foo", "bar")
-// .get("foo")
-// .exec((err, results) => {
-//   // results === [[null, 'OK'], [null, 'bar']]
-// });
-//https://chat.openai.com/c/85148770-5e3c-4ec8-973a-e5e31d67fb69
-
-//TODO check env_data.js script, either run it or throw error if no ENV_DATA key
-
 app.post('/webhooks/:eventName', jsonParser, async (request, res) => {
   try {
-    //TODO config weezevent
-    //eventId and applicationId should exist in our configuration
-    const eventId = 'FTIKortrijk';  
-    // const ENV_DATA = await redis.get("ENV_DATA");    
-    // const POS_DATA = JSON.parse(ENV_DATA).find(data => data.POSID === request.body.POSID);
-    // console.log('POS_DATA', POS_DATA);
-    // const eventId = POS_DATA.eventId;
-
     //TODO validate auth header
-    // console.log(`Webhook ${eventName} Request ${request.protocol}://${request.get('host')}${request.originalUrl} \n ----`)
-    console.log(`Webhook originalUrl ${request.params.eventName} ${request.originalUrl}`)
+    console.log(`Webhook originalUrl ${request.params.eventName}`)
     console.log('headers', JSON.stringify(request.headers));
     console.log('body', JSON.stringify(request.body))
 
-    const data = request.body;
-
     //TODO important - wat doen we hiermee?
-    const skipWebhookUpdates = false;
+    const skipWebhookUpdates = true;
     if(skipWebhookUpdates && request.body.method === 'update') {
       console.log('Skipping update request for now')
     }
 
-    //TODO catch if it returns more than one row
-    // data.values.rows.forEach(row => { })
-    const row = data.values.rows[0];
+    const data = request.body;
 
     //TODO IMPORTANT should we handle updates?
 
-    //VALIDATE
+    //TODO VALIDATE are event.id and application.id known?
     //POS_EVENT_ID = data.values.event.id?
-    //QUANTITY IS BIGGER THAN 0?
+    // const ENV_DATA = await redis.get("ENV_DATA");
+    // if(!ENV_DATA) {
+    //   const errorMessage = `No ENV DATA of POS not known. Update env_data.js to set ENV!`;
+    //   console.error(errorMessage);
+    //   throw new Error(errorMessage);
+    // }
+
+    //TODO VALIDATE catch if it returns more than one row
+    // data.values.rows.forEach(row => { })
+    const row = data.values.rows[0];
+    //TODO VALIDATE QUANTITY IS BIGGER THAN 0?
 
     const key = `UNMATCHED:${data.values.event.id}:${data.values.application.id}`;
     const score = new Date(data.values.validated).getTime()
@@ -68,11 +53,9 @@ app.post('/webhooks/:eventName', jsonParser, async (request, res) => {
     console.log(`New sale at ${payloadSale.soldAt} - ${data.values.validated}`);
 
     const zadd = await redis.zadd(key, score, JSON.stringify(payloadSale));
-    //    console.log("ZADD", key, score, JSON.stringify(payloadSale));
     // console.log('zadd redis insert', zadd)
 
-    const hset = await redis.hset(`SALE:${key}:${payloadSale.transaction_id}`, payloadSale)//Object.entries(payloadEPC).flat());
-    // console.log("HSET", `SALE:${key}:${payloadSale.transaction_id}`, payloadSale)
+    const hset = await redis.hset(`SALE:${key}:${payloadSale.transaction_id}`, payloadSale);
     // console.log('hset redis insert', hset);
 
     //TODO MESSAGE QUEUE
@@ -104,7 +87,7 @@ app.post('/activate', jsonParser, async (request, res) => {
       throw new Error(errorMessage);
     }
 
-    const POS_DATA = JSON.parse(ENV_DATA).find(data => data.POSID === request.body.POSID);
+    const POS_DATA = JSON.parse(ENV_DATA).scanners.find(data => data.POSID === request.body.POSID);
     console.log('POS_DATA', POS_DATA);
     const eventId = POS_DATA.eventId;
 
