@@ -59,7 +59,7 @@ app.post('/webhooks/:eventName', jsonParser, async (request, res) => {
     // console.log('hset redis insert', hset);
 
     //TODO MESSAGE QUEUE
-    const queuePush = await redis.rpush(`SALE_QUEUE:${eventId}`, JSON.stringify({applicationId: data.values.application.id, payloadSale}));
+    const queuePush = await redis.rpush(`SALE_QUEUE:${data.values.event.id}`, JSON.stringify({applicationId: data.values.application.id, payloadSale}));
     console.log('Queue pushed:', queuePush)
 
     res.send({ status: 'SUCCESS', message: 'Data saved to Redis' });
