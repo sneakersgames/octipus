@@ -4,42 +4,72 @@ const Redis = require('ioredis');
 const redisUrl = 'default:bigredisbigresults23@redis-goodless.fanarena.com:6379'; // process.env.REDIS_URL || 'default:bigredisbigresults23@redis-goodless.fanarena.com:6379' //'0.0.0.0:6379';
 const redis = new Redis(`redis://${redisUrl}`);
 
-async function getUnmatchedSalesBetween(eventId, POSID, score) {
+async function saveMatchedEPCs(eventId, EPCs, saleData) {
+  try {
+    for (const item of EPCs) {
+      const EPC = item[1][1];
+
+      if(!EPC) { //check we have an actual EPC
+        const errorMessage = `'No EPC found in EPCs array ${EPCs}.`;
+        console.error(errorMessage);
+        throw new Error(errorMessage);
+      }
+      const key = `SALE:MATCHED:${eventId}:${EPC}`;
+      const data = Object.entries(saleData).flat();
+
+      // Save to Redis
+      const result = await redis.hset(key, data);
+      console.log(`Saved matched ${EPC} to Redis ${result}`);
+
+      // TODO IMPORTANT Remove the UNMATCHED sale based on saleData
+    }
+    return true;
+  } catch (error) {
+    console.error('Failed to save EPC data to Redis:', error);
+    throw error; // Rethrow or handle as needed
+  }
+}
+
+async function matchSalesBetween(eventId, POSID, saleData) {
   try {
     //TODO IMPORTANT REPLACE
     const key = `UNMATCHED:1:1`;//`UNMATCHED:${eventId}:${POSID}`
 
-    // lastSale
-    // const data = await redis.zrange(key, 0, 0, "REV"); // "WITHSCORES"
-    // const lastSale = JSON.parse(data[0]).soldAt;
+    // ZRANGE UNMATCHED:1:1 (1710318191134 -inf BYSCORE REV LIMIT 0 1 WITHSCORES
+    console.log(`ZRANGE ${key} (${saleData.soldAt} -inf BYSCORE REV LIMIT 0 1 WITHSCORES`)
+    const result = await redis.zrange(key, `(${saleData.soldAt}`, '-inf', 'BYSCORE', 'REV', 'LIMIT', 0, 1);//, WITHSCORES);
+    const prevSale = JSON.parse(result);
 
-    const data = await redis.zrange(key, 0, -1);
-    console.log(data)
+    if(!prevSale) {
+      const errorMessage = `No prevSale yet for ${POSID}.`;
+      console.error(errorMessage);
+      throw new Error(errorMessage);
+    }// TODO no last sale
 
-    return JSON.parse(data);
+    console.log("PREVSALE", prevSale);
+
+    //EPC zoeken aan die mat
+    const EPCs = await redis.xrange(`SCAN:FTIKortrijk:62b6db49-0c07-4e8a-ae92-000462b6db49`, prevSale.soldAt, saleData.soldAt);
+    console.log("EPC MATCHED SCAN:FTIKortrijk:62b6db49-0c07-4e8a-ae92-000462b6db49`", prevSale.soldAt, saleData.soldAt, EPCs);
+
+    const savedEPCs = await saveMatchedEPCs(eventId, EPCs, saleData);
+    console.log(`All matched EPCs saved to Redis ${savedEPCs}`);
+
+    if(savedEPCs) {
+      await zremAsync(key, JSON.stringify(saleData));
+      console.log(`Removed ${JSON.stringify(saleData)} from ${key}`)
+    } else {
+      const errorMessage = `Could not save EPCs ${EPCs}.`;
+      console.error(errorMessage);
+      throw new Error(errorMessage);
+    }
+
+    return savedEPCs;
   } catch (err) {
     console.error('Error fetching additional data from Redis:', err);
     throw err; // Rethrow if you want calling code to handle it
   }
 }
-
-//TODO SINCE SCAN
-// async function getLastThreeSales(eventId, POSID, firstScan) {
-//   try {
-//     //TODO IMPORTANT REPLACE
-//     const key = `UNMATCHED:1:1`;//`UNMATCHED:${eventId}:${POSID}`
-
-//         // ZRANGE key start stop [BYSCORE | BYLEX] [REV] [LIMIT offset count]
-//     // [WITHSCORES]
-
-//     const data = await redis.zrange(key, '-inf', firstScan, "BYSCORE");// await redis.zrange(key, '-inf', firstScan, 'BYSCORE', 'LIMIT 0 3', 'WITHSCORES')
-    
-//     return JSON.parse(data); // Assuming the data is JSON-formatted
-//   } catch (err) {
-//     console.error('Error fetching additional data from Redis:', err);
-//     throw err; // Rethrow if you want calling code to handle it
-//   }
-// }
 
 async function processMessage(eventId, message) {
   try {
@@ -52,23 +82,10 @@ async function processMessage(eventId, message) {
     // const lastSync = await getLastSale(eventId, message.body.POSID, firstScan);
     // console.log("Last sync sales", lastSync);
 
-    const unmatchedSale = await getUnmatchedSalesBetween(eventId, message.locationId, message.payloadSale.soldAt);
-    console.log("Unmatched sale", unmatchedSale);
+    const result = await matchSalesBetween(eventId, message.applicationId, message.payloadSale);
+    console.log("final result", result)
+    return result
 
-    if(false) {
-      const errorMessage = `${epc.EPC}`;
-      console.error(errorMessage);
-    }
-
-    //ZREM UNMATCHED:1:1 '{"soldAt":1710249180561,"transaction_id":51,"transaction_row_id":76,"quantity":6,"status":"pending","matched":0}'
-
-    return true;
-
-    // const lastThreeSales = await getLastThreeSales(eventId, message.body.POSID, firstScan);
-    // console.log('getLastThreeSales:', lastThreeSales);
-
-    // - EPC activation: Package:EventId:EPC → card/tx 
-    // → EPC History: History:EPC → historical logs → "activation"
   } catch (error) {
     console.error('Error processing message:', error);
     return error;

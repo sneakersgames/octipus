@@ -7,11 +7,13 @@ const env_data = JSON.stringify(
 [
   {
     POSID: '62b6db49-0c07-4e8a-ae92-000462b6db49',
+    applicationId: 1,
     type: 'scan',
     eventId: 'FTIKortrijk'
   },
   {
     POSID: 'f8ded70b-0c07-4e8a-ae92-0003f8ded70b',
+    applicationId: 0,
     type: 'bin',
     eventId: 'FTIKortrijk'
   },

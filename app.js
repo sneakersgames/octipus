@@ -24,7 +24,7 @@ const redis = new Redis(`redis://${redisUrl}`);
 app.post('/webhooks/:eventName', jsonParser, async (request, res) => {
   try {
     //TODO config weezevent
-    //eventId and locationId should exist in our configuration
+    //eventId and applicationId should exist in our configuration
     const eventId = 'FTIKortrijk';  
     // const ENV_DATA = await redis.get("ENV_DATA");    
     // const POS_DATA = JSON.parse(ENV_DATA).find(data => data.POSID === request.body.POSID);
@@ -39,6 +39,12 @@ app.post('/webhooks/:eventName', jsonParser, async (request, res) => {
 
     const data = request.body;
 
+    //TODO important - wat doen we hiermee?
+    const skipWebhookUpdates = false;
+    if(skipWebhookUpdates && request.body.method === 'update') {
+      console.log('Skipping update request for now')
+    }
+
     //TODO catch if it returns more than one row
     // data.values.rows.forEach(row => { })
     const row = data.values.rows[0];
@@ -49,7 +55,7 @@ app.post('/webhooks/:eventName', jsonParser, async (request, res) => {
     //POS_EVENT_ID = data.values.event.id?
     //QUANTITY IS BIGGER THAN 0?
 
-    const key = `UNMATCHED:${data.values.event.id}:${data.values.location.id}`;
+    const key = `UNMATCHED:${data.values.event.id}:${data.values.application.id}`;
     const score = new Date(data.values.validated).getTime()
     const payloadSale = {
       soldAt: score,//milliseconds
@@ -70,7 +76,7 @@ app.post('/webhooks/:eventName', jsonParser, async (request, res) => {
     // console.log('hset redis insert', hset);
 
     //TODO MESSAGE QUEUE
-    const queuePush = await redis.rpush(`SALE_QUEUE:${eventId}`, JSON.stringify({locationId: data.values.location.id, payloadSale}));
+    const queuePush = await redis.rpush(`SALE_QUEUE:${eventId}`, JSON.stringify({applicationId: data.values.application.id, payloadSale}));
     console.log('Queue pushed:', queuePush)
 
     res.send({ status: 'SUCCESS', message: 'Data saved to Redis' });
@@ -98,14 +104,14 @@ app.post('/activate', jsonParser, async (request, res) => {
 
     const currentTime = Date.now();
 
-    if(request.body.method === 'update') {
-      //TODO important - wat doen we hiermee?
-      console.log('Skipping update request for now')
-    } else if(!POS_DATA) {
+    if(!POS_DATA) {
       const errorMessage = `POSID ${request.body.POSID} is not known.`;
       console.error(errorMessage);
       throw new Error(errorMessage);
     } else if(POS_DATA.type === 'scan') {
+      //TODO remove this
+      console.log("SALE SCAN REQUEST!")
+
       const tags = Array.isArray(request.body.tags) ? request.body.tags : [request.body.tags];
 
       for (const [index, epc] of (tags || []).entries()) {
@@ -152,7 +158,6 @@ app.post('/activate', jsonParser, async (request, res) => {
             status: 'scanned'
           }
 
-          //TODO catch redis insert errors
           await redis.hset(`PACKAGE:${eventId}:${epc.EPC}`, Object.entries(payloadEPC).flat());
 
           await redis.xadd(
@@ -160,19 +165,95 @@ app.post('/activate', jsonParser, async (request, res) => {
             `${score}-${index}`, 
             'EPC',
             epc.EPC
-            // Object.entries(payloadEPC).flat()
           );
-          //stream xadd or zadd for sorted set
-          //await redis.xadd(`SCAN:${eventId}:${request.body.POSID}}`, '*', 'EPC', epc.EPC, 'first_seen', epc.first_seen, 'last_seen', epc.last_seen, 'count', epc.count);
-          //await redis.zadd(`SCAN:${eventId}:${request.body.POSID}`, `${score}-${index}`, JSON.stringify(epc));
+
+          await redis.xadd(
+            `HISTORY:${epc.EPC}`, 
+            `${score}-${index}`, 
+            'info',
+            `${eventId} SALE at ${request.body.POSID} with ${epc.count} counts. UTC ${score}, First seen ${epc.first_seen}, Last seen ${epc.last_seen}.`
+          );
+
+        } catch (innerError) {
+          console.error('Error processing EPC:', innerError);
+          errorMessages.push(innerError.message);
+        }
+      }
+  
+      if (errorMessages.length > 0) {
+        res.send({ 
+          status: 'PARTIAL_SUCCESS', 
+          message: 'Some data saved to Redis, but there were errors.',
+          errors: errorMessages 
+        });
+      } else {
+        res.send({ status: 'SUCCESS', message: 'Sale scan data saved to Redis' });
+      }
+
+    } else if (POS_DATA.type === 'bin') {
+      //TODO remove this
+      console.log("BIN REQUEST!")
+
+      const tags = Array.isArray(request.body.tags) ? request.body.tags : [request.body.tags];
+
+      for (const [index, epc] of (tags || []).entries()) {
+        try {
+          //todo remove this
+          console.log("EPC", epc.EPC);
+
+          if (!epc.EPC.startsWith('330')) {
+            const errorMessage = `EPC does not start with 330. ${epc.EPC}`;
+            console.error(errorMessage);
+            errorMessages.push(errorMessage);
+
+            continue;
+          }
+
+          const firstSeen = new Date(epc.first_seen);
+          let score = firstSeen.getTime();
+
+          if (Math.abs(currentTime - score) / (1000 * 60) > 10) {
+            
+            score = currentTime; //set score to current time which is more accurate
+
+            const errorMessage = `BIN ${request.body.POSID}: time is out of sync, ${epc.first_seen}.`;
+            console.error(errorMessage);
+            errorMessages.push(errorMessage);
+          }
+      
+          if (Math.abs(currentTime - score) / (1000 * 60 * 60 * 24 * 365) > 1) {
+            
+            score = currentTime; //set score to current time which is more accurate
+
+            const errorMessage = `BIN ${request.body.POSID}: time is wrong, ${epc.first_seen}`;
+            console.error(errorMessage);
+            errorMessages.push(errorMessage);
+          }
+
+          const payloadEPC = {
+            BINID: request.body.POSID,
+            eventId: eventId,
+            return_first_seen: epc.first_seen,
+            return_last_seen: epc.last_seen,
+            return_count: epc.count,
+            status: 'returned'
+          }
+
+          await redis.hset(`PACKAGE:${eventId}:${epc.EPC}`, Object.entries(payloadEPC).flat());
+
+          await redis.xadd(
+            `SCAN:${eventId}:${request.body.POSID}`, 
+            `${score}-${index}`, 
+            'EPC',
+            epc.EPC
+          );
       
           //TODO HISTORY
           await redis.xadd(
             `HISTORY:${epc.EPC}`, 
             `${score}-${index}`, 
             'info',
-            `${eventId} SALE at ${request.body.POSID} with ${epc.count} counts. UTC ${score}, First seen ${epc.first_seen}, Last seen ${epc.last_seen}.`
-            // Object.entries(payloadEPC).flat()
+            `${eventId} RETURN at ${request.body.POSID} with ${epc.count} counts. UTC ${score}, First seen ${epc.first_seen}, Last seen ${epc.last_seen}.`
           );
 
         } catch (innerError) {
@@ -189,12 +270,8 @@ app.post('/activate', jsonParser, async (request, res) => {
           errors: errorMessages 
         });
       } else {
-        res.send({ status: 'SUCCESS', message: 'All data saved to Redis' });
+        res.send({ status: 'SUCCESS', message: 'Bin scan data saved to Redis' });
       }
-
-    } else if (POS_DATA.type === 'bin') {
-      //todo important return trigger
-      res.send({ status: 'SUCCESS', message: 'BIN' });
     } else {      
       const errorMessage = `${POS_DATA.type} type not known.`;
       console.error(errorMessage);
