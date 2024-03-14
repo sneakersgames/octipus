@@ -97,7 +97,13 @@ app.post('/activate', jsonParser, async (request, res) => {
     console.log('headers', JSON.stringify(request.headers));
     console.log('body', JSON.stringify(request.body))
 
-    const ENV_DATA = await redis.get("ENV_DATA");    
+    const ENV_DATA = await redis.get("ENV_DATA");
+    if(!ENV_DATA) {
+      const errorMessage = `No ENV DATA is set. Run node env_data.js to set ENV!`;
+      console.error(errorMessage);
+      throw new Error(errorMessage);
+    }
+
     const POS_DATA = JSON.parse(ENV_DATA).find(data => data.POSID === request.body.POSID);
     console.log('POS_DATA', POS_DATA);
     const eventId = POS_DATA.eventId;
