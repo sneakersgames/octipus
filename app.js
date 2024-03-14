@@ -108,9 +108,10 @@ app.post('/activate', jsonParser, async (request, res) => {
 
           //todo remove this
           console.log("EPC", epc.EPC);
+          //TODO DYNAMIC EPC CODE 330
 
-          if (!epc.EPC.startsWith('330')) {
-            const errorMessage = `EPC does not start with 330. ${epc.EPC}`;
+          if (!epc.EPC.startsWith('303')) {
+            const errorMessage = `EPC does not start with 303. ${epc.EPC}`;
             console.error(errorMessage);
             errorMessages.push(errorMessage);
 
@@ -190,8 +191,8 @@ app.post('/activate', jsonParser, async (request, res) => {
           //todo remove this
           console.log("EPC", epc.EPC);
 
-          if (!epc.EPC.startsWith('330')) {
-            const errorMessage = `EPC does not start with 330. ${epc.EPC}`;
+          if (!epc.EPC.startsWith('303')) {
+            const errorMessage = `EPC does not start with 303. ${epc.EPC}`;
             console.error(errorMessage);
             errorMessages.push(errorMessage);
 
