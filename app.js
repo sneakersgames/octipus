@@ -17,6 +17,8 @@ app.post('/webhooks/:eventName', jsonParser, async (request, res) => {
     // console.log('headers', JSON.stringify(request.headers));
     console.log('body', JSON.stringify(request.body))
 
+    const data = request.body;
+
     await redis.xadd(
       `WEBHOOKLOG:${request.params.eventName}`, 
       data.values.application.id, //`${Date.now()}`, 
@@ -29,8 +31,6 @@ app.post('/webhooks/:eventName', jsonParser, async (request, res) => {
     if(skipWebhookUpdates && request.body.method === 'update') {
       res.send({ status: 'SUCCESS', message: `Skipping update request due to closed loop` });
     } else {
-      const data = request.body;
-
       //TODO VALIDATE are event.id and application.id known?
       //POS_EVENT_ID = data.values.event.id?
       // const ENV_DATA = await redis.get("ENV_DATA");
