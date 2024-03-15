@@ -130,7 +130,7 @@ function waitForMessage() {
   //todo refundqueue:eventId
   redis.blpop(`REFUND_QUEUE:1`, 0, async (err, [queue, messageString]) => {
     if (err) {
-      console.error('Error popping message from refund list', err);
+      console.error('Error popping message from refund list...', err);
       return;
     }
 
