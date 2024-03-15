@@ -5,8 +5,10 @@ const port = process.env.PORT || 3000;
 var jsonParser = bodyParser.json()
 
 const Redis = require('ioredis');
+// Configure Redis client
 const redisUrl = process.env.REDIS_URL || 'default:bigredisbigresults23@0.0.0.0:6379';
-//'default:bigredisbigresults23@redis-goodless.fanarena.com:6379';const redis = new Redis(`redis://${redisUrl}`);
+//'default:bigredisbigresults23@redis-goodless.fanarena.com:6379';
+const redis = new Redis(`redis://${redisUrl}`);
 
 app.post('/webhooks/:eventName', jsonParser, async (request, res) => {
   try {
@@ -231,26 +233,37 @@ app.post('/activate', jsonParser, async (request, res) => {
             const hsetPACKAGE = await redis.hset(`PACKAGE:${eventId}:${epc.EPC}`, Object.entries(payloadEPC).flat());
   
             const xaddSCAN = await redis.xadd(
-              `SCAN:${eventId}:${request.body.POSID}`, 
-              `${score}-${index}`, 
+              `SCAN:${eventId}:${request.body.POSID}`,
+              //TODO revert
+              // `${score}-${index}`, 
+              `${currentTime}-${index}`,
               'EPC',
               epc.EPC
             );
         
             const xaddHISTORY = await redis.xadd(
               `HISTORY:${epc.EPC}`, 
-              `${score}-${index}`, 
+                //TODO revert
+              // `${score}-${index}`, 
+              `${currentTime}-${index}`,
               'info',
               `${eventId} RETURN at ${request.body.POSID} with ${epc.count} counts. UTC ${score}, First seen ${epc.first_seen}, Last seen ${epc.last_seen}.`
             );
 
-            console.log(`${epc.EPC} RETURNED: ${hsetPACKAGE}, ${xaddSCAN}, ${xaddHISTORY}`);
+            console.log(`RETURNED EPC ${epc.EPC} - ${hsetPACKAGE}, ${xaddSCAN}, ${xaddHISTORY}`);
 
-            //TODO IMPORTANT REFUND WORKER each EPC now to Refund QUEUE
-            const refund = await redis.hget(`PACKAGE::${eventId}:${epc.EPC}`);
-            console.log('TODO Refund data from redis', refund)
-            const queuePush = await redis.rpush(`REFUND_QUEUE:${externalEventId}`, refund);
-            console.log(`Refund queue pushed ${queuePush}`)
+            const refund = await redis.hgetall(`PACKAGE:${eventId}:${epc.EPC}`);
+            
+            //IMPORTANT
+            if(!refund.soldAt || !refund.transaction_id || !refund.transaction_row_id) {
+              console.log(`Returned unmatched CUP ${epc.EPC}`);
+              await redis.rpush(`RETURNED_UNMATCHED:1`, JSON.stringify(epc));
+            } else {
+              //TODO REFUND_QUEUE eventId
+              const refundString = JSON.stringify(Object.assign({}, refund, { EPC: epc.EPC}));
+              const queuePush = await redis.rpush(`REFUND_QUEUE:1`, refundString);
+              console.log(`Refund ${epc.EPC} queue pushed ${queuePush}`)
+            }
   
           } catch (innerError) {
             console.error('Error processing EPC:', innerError);

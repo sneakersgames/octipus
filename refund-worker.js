@@ -1,22 +1,3 @@
-//REFUND
-// Refund Worker (Return)
-// - Package:EventId:EPC → Refund tx via API
-// 	→ EPC History: History:EPC → historical logs → "refund"
-
-//https://api.weezevent.com/pay/v2/organizations/485376/transactions/actions
-// {
-//   "type": "CANCEL_TRANSACTION_PARTIALLY_REFUNDABLES",
-//   "config": {
-//     "transaction_rows": [
-//       {
-//         "id":  {transaction_row_id},
-//         "quantity":  {quantity}
-//       }
-//     ],
-//     "transaction_id":  {transaction_id}
-//   }
-// }
-
 const https = require('https');
 const querystring = require('querystring');
 
@@ -26,30 +7,15 @@ const querystring = require('querystring');
 const tokenUrl = 'https://accounts.weezevent.com/oauth2/request/token';
 const clientId = '0RhXkq6rCT8JTJ47u3ai5EH70MJqtdtDdi3rSfWE';
 const clientSecret = '7HjARbI8YvXhVNZmXiIo8AvOxH9DHbayEupMKdpy';
+const testRefundUrl = 'https://api.weezevent.com/pay/v2/organizations/485376/transactions/actions';
+const mockUrl = 'https://c0c7fa98e8934b2e92a70a3ae9542a7c.api.mockbin.io/';
+const refundUrl = 'https://api.weezevent.com/pay/v2/organizations/456683/transactions/actions';
 
 const Redis = require('ioredis');
 // Configure Redis client
-const redisUrl = 'default:bigredisbigresults23@redis-goodless.fanarena.com:6379'; // process.env.REDIS_URL || 'default:bigredisbigresults23@redis-goodless.fanarena.com:6379' //'0.0.0.0:6379';
+const redisUrl = process.env.REDIS_URL || 'default:bigredisbigresults23@0.0.0.0:6379';
+//'default:bigredisbigresults23@redis-goodless.fanarena.com:6379';
 const redis = new Redis(`redis://${redisUrl}`);
-
-// async function getEPC(eventId, POSID) {
-//   try {
-//     //TODO IMPORTANT REPLACE
-//     const key = `UNMATCHED:1:1`;//`UNMATCHED:${eventId}:${POSID}`
-
-//     // lastSale
-//     // const data = await redis.zrange(key, 0, 0, "REV"); // "WITHSCORES"
-//     // const lastSale = JSON.parse(data[0]).soldAt;
-
-//     const data = await redis.zrange(key, 0, -1);
-//     console.log(data)
-
-//     return JSON.parse(data);
-//   } catch (err) {
-//     console.error('Error fetching additional data from Redis:', err);
-//     throw err; // Rethrow if you want calling code to handle it
-//   }
-// }
 
 /*
  * METHODS
@@ -92,27 +58,65 @@ function getAccessToken() {
   });
 }
 
+function sendRefund(accessToken, message) {
+  return new Promise((resolve, reject) => {
+    const headers = {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json'
+    };
+
+    const body = JSON.stringify({
+      "type": "CANCEL_TRANSACTION_PARTIALLY_REFUNDABLES",
+      "config": {
+        "transaction_rows": [
+          {
+            "id": message.transaction_row_id,
+            "quantity": 1 //quantity is always one since only scan one EPC
+          }
+        ],
+        "transaction_id": message.transaction_id
+      }
+    });
+
+    const options = {
+      method: 'POST',
+      headers: headers
+    };
+
+    const req = https.request(refundUrl, options, (res) => {
+      let data = '';
+      res.on('data', (chunk) => {
+        data += chunk;
+      });
+      res.on('end', () => {
+        try {
+          const responseJson = JSON.parse(data);
+          resolve(responseJson);
+        } catch (e) {
+          reject(e);
+        }
+      });
+    });
+
+    req.on('error', (e) => {
+      reject(e);
+    });
+
+    req.write(body);
+    req.end();
+  });
+}
+
 /*
  * MAIN
  */
-async function processMessage(eventId, message) {
+async function processMessage(message) {
   try {
-    console.log('Processing message:', JSON.stringify(message));
-    
-    getAccessToken().then(accessToken => {
-      console.log(`\nAccess Token: ${accessToken}\n`);
-    }).catch(error => {
-      console.error('Error getting access token:', error);
-    });
+    // console.log('Processing message:', JSON.stringify(message));
 
-    // const unmatchedSales = await getUnmatchedSales(eventId, message.body.POSID);
-    // console.log("First unmatched sales", unmatchedSales);
-
-    if(false) {
-      const errorMessage = `${epc.EPC}`;
-      console.error(errorMessage);
-    }
-    return true;
+    const accessToken = await getAccessToken();
+    const refund = await sendRefund(accessToken, message);
+    console.log(`Refund for ${message.EPC}, result ${JSON.stringify(refund)}`);
 
   } catch (error) {
     console.error('Error processing message:', error);
@@ -120,45 +124,30 @@ async function processMessage(eventId, message) {
   }
 }
 
-function waitForMessage(eventId) {
-  redis.blpop(`SALE_QUEUE:${eventId}`, 0, async (err, [queue, messageString]) => {
+function waitForMessage() {
+  //todo refundqueue:eventId
+  redis.blpop(`REFUND_QUEUE:1`, 0, async (err, [queue, messageString]) => {
     if (err) {
-      console.error('Error popping message from Redis list', err);
+      console.error('Error popping message from refund list', err);
       return;
     }
 
     if (messageString) {
-      // Deserialize the message back into an object
-      const message = JSON.parse(messageString);
-
-      // Process the message (now an async operation)
-      await processMessage(eventId, message);
+      //TODO validate messageString contents
+      await processMessage(JSON.parse(messageString));
+    } else {
+      console.error('Refund message is empty', messageString, err);
     }
 
-    // Wait for the next message, make sure to pass the eventId again
-    waitForMessage(eventId);
+    // Wait for the next message
+    waitForMessage();
   });
 }
 
 async function startWorker() {
   try {
-    const args = process.argv.slice(2); // Skip the first two elements
-    if (args.length < 1) {
-      console.error('No arguments passed! Usage: node script.js <eventId>');
-      process.exit(1);
-    }
-    const eventId = args[0];
-    // TOOO fetch DATA from eventID
-    const ENV_DATA = true;//await redis.get("ENV_DATA");
-    if (ENV_DATA) {
-      console.log(ENV_DATA);
-
-      // Start waiting for messages
-      console.log(`Started SALE_QUEUE:${eventId} worker...`);
-      waitForMessage(eventId);
-    } else {
-      console.log('No ENV_DATA found.');
-    }
+    console.log(`Started REFUND QUEUE worker...`);
+    waitForMessage();
   } catch (error) {
     console.error('Error initializing worker:', error);
   }
