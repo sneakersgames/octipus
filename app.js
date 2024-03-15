@@ -248,7 +248,7 @@ app.post('/activate', jsonParser, async (request, res) => {
             console.log(`HISTORY:${epc.EPC}`, `${score}-${index}`, 'info', `${eventId} RETURN at ${request.body.POSID} with ${epc.count} counts. UTC ${score}, First seen ${epc.first_seen}, Last seen ${epc.last_seen}.`)
             const xaddHISTORY = await redis.xadd(
               `HISTORY:${epc.EPC}`, 
-              `${score}-${index}`, 
+              `*`, 
               'info',
               `${eventId} RETURN at ${request.body.POSID} with ${epc.count} counts. UTC ${score}, First seen ${epc.first_seen}, Last seen ${epc.last_seen}.`
             );
