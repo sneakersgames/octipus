@@ -29,6 +29,7 @@ app.post('/webhooks/:eventName', jsonParser, async (request, res) => {
     //TODO IMPORTANT should we handle updates?
     const skipWebhookUpdates = true;
     if(skipWebhookUpdates && request.body.method === 'update') {
+      console.log(`Skipping update request due to closed loop`);
       res.send({ status: 'SUCCESS', message: `Skipping update request due to closed loop` });
     } else {
       //TODO VALIDATE are event.id and application.id known?
@@ -191,7 +192,7 @@ app.post('/activate', jsonParser, async (request, res) => {
         for (const [index, epc] of (tags || []).entries()) {
           try {
             //TODO DYNAMIC EPC CODE 330
-            if (!epc.EPC.startsWith('303') || !epc.EPC.startsWith('000')) {
+            if (!epc.EPC.startsWith('303') && !epc.EPC.startsWith('000')) {
               const errorMessage = `EPC does not start with 303 or 000. ${epc.EPC}`;
               console.error(errorMessage);
               errorMessages.push(errorMessage);
@@ -235,7 +236,6 @@ app.post('/activate', jsonParser, async (request, res) => {
             const xaddSCAN = await redis.xadd(
               `SCAN:${eventId}:${request.body.POSID}`,
               `${score}-${index}`, 
-              // `${currentTime}-${index}`,
               'EPC',
               epc.EPC
             );
@@ -243,7 +243,6 @@ app.post('/activate', jsonParser, async (request, res) => {
             const xaddHISTORY = await redis.xadd(
               `HISTORY:${epc.EPC}`, 
               `${score}-${index}`, 
-              // `${currentTime}-${index}`,
               'info',
               `${eventId} RETURN at ${request.body.POSID} with ${epc.count} counts. UTC ${score}, First seen ${epc.first_seen}, Last seen ${epc.last_seen}.`
             );
@@ -288,7 +287,7 @@ app.post('/activate', jsonParser, async (request, res) => {
 
   } catch (error) {
     console.error('Error:', error.message);
-    console.log('DATA:', request.body);
+    console.log('DATA:', JSON.stringify(request.body));
     res.status(500).send({ status: 'FAILURE', message: 'An error occurred', errors: [error.message] });
   }
 });
