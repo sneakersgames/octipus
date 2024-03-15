@@ -114,13 +114,13 @@ app.post('/activate', jsonParser, async (request, res) => {
         for (const [index, epc] of (tags || []).entries()) {
           try {  
             //TODO DYNAMIC EPC CODE 330
-            if (!epc.EPC.startsWith('303')) {
-              const errorMessage = `EPC does not start with 303. ${epc.EPC}`;
-              console.error(errorMessage);
-              errorMessages.push(errorMessage);
+            // if (!epc.EPC.startsWith('303')) {
+            //   const errorMessage = `EPC does not start with 303. ${epc.EPC}`;
+            //   console.error(errorMessage);
+            //   errorMessages.push(errorMessage);
   
-              continue;
-            }
+            //   continue;
+            // }
   
             const firstSeen = new Date(epc.first_seen);
             let score = firstSeen.getTime();
@@ -191,13 +191,13 @@ app.post('/activate', jsonParser, async (request, res) => {
         for (const [index, epc] of (tags || []).entries()) {
           try {
             //TODO DYNAMIC EPC CODE 330
-            if (!epc.EPC.startsWith('303')) {
-              const errorMessage = `EPC does not start with 303. ${epc.EPC}`;
-              console.error(errorMessage);
-              errorMessages.push(errorMessage);
+            // if (!epc.EPC.startsWith('303')) {
+            //   const errorMessage = `EPC does not start with 303. ${epc.EPC}`;
+            //   console.error(errorMessage);
+            //   errorMessages.push(errorMessage);
   
-              continue;
-            }
+            //   continue;
+            // }
   
             const firstSeen = new Date(epc.first_seen);
             let score = firstSeen.getTime();
