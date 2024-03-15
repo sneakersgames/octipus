@@ -19,13 +19,13 @@ app.post('/webhooks/:eventName', jsonParser, async (request, res) => {
 
     const data = request.body;
 
-    console.log(`WEBHOOKLOG:${request.params.eventName}`, data.values.application.id, 'req', JSON.stringify(request.body))
-    await redis.xadd(
-      `WEBHOOKLOG:${request.params.eventName}`, 
-      data.values.application.id, //`${Date.now()}`, 
-      'req',
-      JSON.stringify(request.body)
-    );
+    // console.log(`WEBHOOKLOG:${request.params.eventName}`, data.values.application.id, 'req', JSON.stringify(request.body))
+    // await redis.xadd(
+    //   `WEBHOOKLOG:${request.params.eventName}`, 
+    //   data.values.application.id, //`${Date.now()}`, 
+    //   'req',
+    //   JSON.stringify(request.body)
+    // );
 
     //TODO IMPORTANT should we handle updates?
     const skipWebhookUpdates = true;
