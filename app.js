@@ -114,7 +114,7 @@ app.post('/activate', jsonParser, async (request, res) => {
         for (const [index, epc] of (tags || []).entries()) {
           try {  
             //TODO DYNAMIC EPC CODE 330
-            if (!epc.EPC.startsWith('303') || !epc.EPC.startsWith('000')) {
+            if (!epc.EPC.startsWith('303') && !epc.EPC.startsWith('000')) {
               const errorMessage = `EPC does not start with 303 or 000. ${epc.EPC}`;
               console.error(errorMessage);
               errorMessages.push(errorMessage);
