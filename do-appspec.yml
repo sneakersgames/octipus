@@ -1,0 +1,58 @@
+alerts:
+- rule: DEPLOYMENT_FAILED
+- rule: DOMAIN_FAILED
+envs:
+- key: REDIS_URL
+  scope: RUN_AND_BUILD_TIME
+  value: default:bigredisbigresults23@redis-goodless.fanarena.com:6379
+features:
+- buildpack-stack=ubuntu-22
+ingress:
+  rules:
+  - component:
+      name: octipus
+    match:
+      path:
+        prefix: /
+name: octipus
+region: ams
+services:
+- build_command: npm run build:digitalocean
+  environment_slug: node-js
+  github:
+    branch: main
+    deploy_on_push: true
+    repo: sneakersgames/octipus
+  health_check:
+    port: 8080
+  http_port: 8080
+  instance_count: 20
+  instance_size_slug: professional-xs
+  log_destinations:
+  - logtail:
+      token: jroKVZey7N1pQRY7dMnBuPn9
+    name: octipus
+  name: octipus
+  run_command: npm run start
+  source_dir: /
+workers:
+- build_command: npm run build:digitalocean
+  github:
+    branch: main
+    deploy_on_push: true
+    repo: sneakersgames/octipus
+  instance_count: 1
+  instance_size_slug: professional-xs
+  name: activation-worker
+  run_command: node activation-worker.js
+  source_dir: /
+- build_command: npm run build:digitalocean
+  github:
+    branch: main
+    deploy_on_push: true
+    repo: sneakersgames/octipus
+  instance_count: 1
+  instance_size_slug: professional-xs
+  name: refund-worker
+  run_command: node refund-worker.js
+  source_dir: /

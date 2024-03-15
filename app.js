@@ -234,18 +234,16 @@ app.post('/activate', jsonParser, async (request, res) => {
   
             const xaddSCAN = await redis.xadd(
               `SCAN:${eventId}:${request.body.POSID}`,
-              //TODO revert
-              // `${score}-${index}`, 
-              `${currentTime}-${index}`,
+              `${score}-${index}`, 
+              // `${currentTime}-${index}`,
               'EPC',
               epc.EPC
             );
         
             const xaddHISTORY = await redis.xadd(
               `HISTORY:${epc.EPC}`, 
-                //TODO revert
-              // `${score}-${index}`, 
-              `${currentTime}-${index}`,
+              `${score}-${index}`, 
+              // `${currentTime}-${index}`,
               'info',
               `${eventId} RETURN at ${request.body.POSID} with ${epc.count} counts. UTC ${score}, First seen ${epc.first_seen}, Last seen ${epc.last_seen}.`
             );
