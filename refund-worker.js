@@ -91,6 +91,7 @@ function sendRefund(accessToken, message) {
       res.on('end', () => {
         try {
           const responseJson = JSON.parse(data);
+          console.log("Refund response: ", responseJson);
           resolve(responseJson);
         } catch (e) {
           reject(e);
@@ -99,6 +100,7 @@ function sendRefund(accessToken, message) {
     });
 
     req.on('error', (e) => {
+      console.log("Refund error log: ", e)
       reject(e);
     });
 
@@ -112,7 +114,7 @@ function sendRefund(accessToken, message) {
  */
 async function processMessage(message) {
   try {
-    // console.log('Processing message:', JSON.stringify(message));
+    console.log('Refund worker processing message:', JSON.stringify(message));
 
     const accessToken = await getAccessToken();
     const refund = await sendRefund(accessToken, message);
