@@ -19,6 +19,7 @@ app.post('/webhooks/:eventName', jsonParser, async (request, res) => {
 
     const data = request.body;
 
+    console.log(`WEBHOOKLOG:${request.params.eventName}`, data.values.application.id, 'req', JSON.stringify(request.body))
     await redis.xadd(
       `WEBHOOKLOG:${request.params.eventName}`, 
       data.values.application.id, //`${Date.now()}`, 
@@ -102,6 +103,7 @@ app.post('/activate', jsonParser, async (request, res) => {
       throw new Error(errorMessage);
     } else if(POS_DATA.type) {
 
+      console.log(`SCANLOG:${request.body.POSID}`, `${currentTime}`, 'req', JSON.stringify(request.body));
       await redis.xadd(
         `SCANLOG:${request.body.POSID}`, 
         `${currentTime}`, 
@@ -156,6 +158,7 @@ app.post('/activate', jsonParser, async (request, res) => {
   
             const hsetPACKAGE = await redis.hset(`PACKAGE:${eventId}:${epc.EPC}`, Object.entries(payloadEPC).flat());
   
+            console.log(`SCAN:${eventId}:${request.body.POSID}`, `${score}-${index}`, 'EPC', epc.EPC)
             const xaddSCAN = await redis.xadd(
               `SCAN:${eventId}:${request.body.POSID}`, 
               `${score}-${index}`, 
@@ -163,7 +166,8 @@ app.post('/activate', jsonParser, async (request, res) => {
               epc.EPC
             );
   
-            const xaddHISTORY =await redis.xadd(
+            console.log((`HISTORY:${epc.EPC}`, `${score}-${index}`, 'info', `${eventId} SALE at ${request.body.POSID} with ${epc.count} counts. UTC ${score}, First seen ${epc.first_seen}, Last seen ${epc.last_seen}.`))
+            const xaddHISTORY = await redis.xadd(
               `HISTORY:${epc.EPC}`, 
               `${score}-${index}`, 
               'info',
@@ -233,6 +237,7 @@ app.post('/activate', jsonParser, async (request, res) => {
   
             const hsetPACKAGE = await redis.hset(`PACKAGE:${eventId}:${epc.EPC}`, Object.entries(payloadEPC).flat());
   
+            console.log(`SCAN:${eventId}:${request.body.POSID}`, `${score}-${index}`, 'EPC', epc.EPC);
             const xaddSCAN = await redis.xadd(
               `SCAN:${eventId}:${request.body.POSID}`,
               `${score}-${index}`, 
@@ -240,6 +245,7 @@ app.post('/activate', jsonParser, async (request, res) => {
               epc.EPC
             );
         
+            console.log(`HISTORY:${epc.EPC}`, `${score}-${index}`, 'info', `${eventId} RETURN at ${request.body.POSID} with ${epc.count} counts. UTC ${score}, First seen ${epc.first_seen}, Last seen ${epc.last_seen}.`)
             const xaddHISTORY = await redis.xadd(
               `HISTORY:${epc.EPC}`, 
               `${score}-${index}`, 

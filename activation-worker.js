@@ -29,6 +29,7 @@ async function saveMatchedEPCs(internalEventId, externalEventId, POSID, EPCs, sa
 
       const package = await redis.hset(`PACKAGE:${internalEventId}:${EPC}`, data);
       const result = await redis.hset(`SALE:MATCHED:${externalEventId}:${POSID}:${saleData.transaction_id}:${EPC}`, data);
+      console.log(`HISTORY:${EPC}`, `${Date.now()}`, 'info',`MATCH to transaction ${saleData.transaction_id} at POS ${POSID}. Sold at ${saleData.soldAt}`)
       const history = await redis.xadd(
         `HISTORY:${EPC}`, 
         `${Date.now()}`,
