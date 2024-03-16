@@ -72,7 +72,7 @@ async function matchSalesBetween(ENV_DATA, POSID, saleData) {
       const EPCs = await redis.xrange(`SCAN:${internalEventId}:${scannerId}`, prevSale.soldAt, saleData.soldAt);
       console.log(`SUCCES! MATCHED SCAN:${internalEventId}:${scannerId}`, prevSale.soldAt, saleData.soldAt, EPCs);
   
-      const savedEPCs = await saveMatchedEPCs(internalEventId, externalEventId, POSID, EPCs, saleData);
+      const savedEPCs = await saveMatchedEPCs(internalEventId, externalEventId, POSID, EPCs, prevSale);
   
       if(savedEPCs) {
         // await redis.zrem(key, JSON.stringify(saleData));
