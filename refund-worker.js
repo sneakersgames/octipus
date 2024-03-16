@@ -72,7 +72,7 @@ function sendRefund(accessToken, message) {
           {
             "id": message.transaction_row_id,
             // APPERANTLY WE CAN NOT CANCEL PARTIALLY REFUNDABLES PARTIALLY, WE NEED TO PASS THE FULL QUANTITY
-            // THIS MIGHT RESULT IN MORE REFUNDED CUPS THAN INTENDED
+            // THIS MIGHT RESULT IN MORE REFUNDED CUPS THAN INTENDED.
             "quantity": message.quantity //quantity is always one since only scan one EPC
           }
         ],
