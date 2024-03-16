@@ -72,6 +72,7 @@ app.post('/webhooks/:eventName', jsonParser, async (request, res) => {
       //TODO VALIDATE QUANTITY IS BIGGER THAN 0?
 
       const score = new Date(data.values.validated).getTime()
+      console.log(`Tijd van webhook: ${data.values.validated} - Tijd van score ${score}`)
       const payloadSale = {
         soldAt: score,//milliseconds
         transaction_id: data.id,
