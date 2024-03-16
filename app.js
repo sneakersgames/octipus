@@ -10,6 +10,26 @@ const redisUrl = process.env.REDIS_URL || 'default:bigredisbigresults23@0.0.0.0:
 //'default:bigredisbigresults23@redis-goodless.fanarena.com:6379';
 const redis = new Redis(`redis://${redisUrl}`);
 
+const saleContainsNegativeQuantity = function(sale) {
+  // Check if dataObject is an object and if not, return false.
+  if (!sale || typeof sale !== 'object') return false;
+
+  // Navigate through the specific path within the object structure.
+  if (sale.values && Array.isArray(sale.values.rows)) {
+      for (const row of sale.values.rows) {
+          if (Array.isArray(row.payments)) {
+              for (const payment of row.payments) {
+                  // Check for negative quantity and return true immediately if found.
+                  if (payment.quantity < 0) {
+                      return true;
+                  }
+              }
+          }
+      }
+  }
+  return false; // Return false if no negative quantity is found.
+}
+
 app.post('/webhooks/:eventName', jsonParser, async (request, res) => {
   try {
     //TODO validate auth header
@@ -27,6 +47,10 @@ app.post('/webhooks/:eventName', jsonParser, async (request, res) => {
       JSON.stringify(request.body)
     );
 
+    if(saleContainsNegativeQuantity(data)) {
+      console.log(`Skipping webhook request due to negative quantity`);
+      res.send({ status: 'SUCCESS', message: `Skipping webhook request due to negative quantity` });
+    }
     //TODO IMPORTANT should we handle updates?
     const skipWebhookUpdates = true;
     if(skipWebhookUpdates && request.body.method === 'update') {
