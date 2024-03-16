@@ -10,28 +10,52 @@ const redisUrl = process.env.REDIS_URL || 'default:bigredisbigresults23@0.0.0.0:
 //'default:bigredisbigresults23@redis-goodless.fanarena.com:6379';
 const redis = new Redis(`redis://${redisUrl}`);
 
+const saleContainsNegativeQuantity = function(sale) {
+  // Check if dataObject is an object and if not, return false.
+  if (!sale || typeof sale !== 'object') return false;
+
+  // Navigate through the specific path within the object structure.
+  if (sale.values && Array.isArray(sale.values.rows)) {
+      for (const row of sale.values.rows) {
+          if (Array.isArray(row.payments)) {
+              for (const payment of row.payments) {
+                  // Check for negative quantity and return true immediately if found.
+                  if (payment.quantity < 0) {
+                      return true;
+                  }
+              }
+          }
+      }
+  }
+  return false; // Return false if no negative quantity is found.
+}
+
 app.post('/webhooks/:eventName', jsonParser, async (request, res) => {
   try {
     //TODO validate auth header
     console.log(`New Webhook ${request.params.eventName} \n ----`)
     // console.log('headers', JSON.stringify(request.headers));
-    console.log('body', JSON.stringify(request.body))
+    console.log('webhookBody', JSON.stringify(request.body))
 
     const data = request.body;
 
-    console.log(`WEBHOOKLOG:${request.params.eventName}`, data.values.application.id, 'req', JSON.stringify(request.body))
-    // await redis.xadd(
-    //   `WEBHOOKLOG:${request.params.eventName}`, 
-    //   data.values.application.id, //`${Date.now()}`, 
-    //   'req',
-    //   JSON.stringify(request.body)
-    // );
+    console.log(`WEBHOOKLOG:${request.params.eventName}:${data.values.application.id}`, '*', 'req', JSON.stringify(request.body))
+    await redis.xadd(
+      `WEBHOOKLOG:${request.params.eventName}:${data.values.application.id}`, 
+      '*', 
+      'req',
+      JSON.stringify(request.body)
+    );
 
+    if(saleContainsNegativeQuantity(data)) {
+      console.log(`Skipping webhook request due to negative quantity`);
+      res.send({ status: 'SUCCESS', message: `Skipping webhook request due to negative quantity` });
+    }
     //TODO IMPORTANT should we handle updates?
     const skipWebhookUpdates = true;
     if(skipWebhookUpdates && request.body.method === 'update') {
-      console.log(`Skipping update request due to closed loop`);
-      res.send({ status: 'SUCCESS', message: `Skipping update request due to closed loop` });
+      console.log(`Skipping update request to prevent double refunds`);
+      res.send({ status: 'SUCCESS', message: `Skipping update request to prevent double refunds` });
     } else {
       //TODO VALIDATE are event.id and application.id known?
       //POS_EVENT_ID = data.values.event.id?
@@ -83,7 +107,7 @@ app.post('/activate', jsonParser, async (request, res) => {
     console.log('New SCAN \n ----')
     //TODO validate auth header
     // console.log('headers', JSON.stringify(request.headers));
-    console.log('body', JSON.stringify(request.body))
+    console.log('scanBody', JSON.stringify(request.body))
 
     const ENV_DATA = await redis.get("ENV_DATA");
     if(!ENV_DATA) {
@@ -122,7 +146,7 @@ app.post('/activate', jsonParser, async (request, res) => {
               console.error(errorMessage);
               errorMessages.push(errorMessage);
   
-              continue;
+              // continue; //do not stop here, continue will go to next EPC
             }
   
             const firstSeen = new Date(epc.first_seen);
@@ -201,7 +225,7 @@ app.post('/activate', jsonParser, async (request, res) => {
               console.error(errorMessage);
               errorMessages.push(errorMessage);
   
-              continue;
+              // continue; //do not stop here, continue will go to next EPC
             }
   
             const firstSeen = new Date(epc.first_seen);
