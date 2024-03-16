@@ -75,8 +75,8 @@ async function matchSalesBetween(ENV_DATA, POSID, saleData) {
       const savedEPCs = await saveMatchedEPCs(internalEventId, externalEventId, POSID, EPCs, saleData);
   
       if(savedEPCs) {
-        await redis.zrem(key, JSON.stringify(saleData));
-        console.log(`Removed ${JSON.stringify(saleData)} from ${key}`)
+        // await redis.zrem(key, JSON.stringify(saleData));
+        console.log(`DISBALED! DID NOT Removed ${JSON.stringify(saleData)} from ${key}`)
       } else {
         const errorMessage = `Could not save EPCs ${EPCs}.`;
         console.error(errorMessage);

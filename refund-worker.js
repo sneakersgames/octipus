@@ -72,6 +72,7 @@ function sendRefund(accessToken, message) {
           {
             "id": message.transaction_row_id,
             "quantity": 1 //quantity is always one since only scan one EPC
+            //            "quantity": message.quantity //quantity is always one since only scan one EPC
           }
         ],
         "transaction_id": message.transaction_id
