@@ -111,16 +111,108 @@ function sendRefund(accessToken, message) {
   });
 }
 
+function sendImmediateRefund(accessToken, message) {
+  return new Promise((resolve, reject) => {
+    const headers = {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json'
+    };
+
+  //   {
+  //     "id": 126,
+  //     "method": "create",
+  //     "organization_id": "456683",
+  //     "type": "transaction",
+  //     "values": {
+  //         "application": {
+  //             "id": 44,
+  //             "name": "SUN L41603"
+  //         },
+  //         "created": "2024-03-16T00:09:31.297532Z",
+  //         "event": {
+  //             "id": 1
+  //         },
+  //         "id": 126,
+  //         "location": {
+  //             "id": 1,
+  //             "name": "Mainbar"
+  //         },
+  //         "rows": [
+  //             {
+  //                 "id": 226,
+  //                 "item": {
+  //                     "id": 4,
+  //                     "name": "Beker"
+  //                 },
+  //                 "payments": [
+  //                     {
+  //                         "payment_method": null,
+  //                         "quantity": 2
+  //                     }
+  //                 ]
+  //             }
+  //         ],
+  //         "status": "V",
+  //         "validated": "2024-03-16T00:09:23.156000Z"
+  //     }
+  // }
+
+    const body = JSON.stringify({
+      "type": "CANCEL_TRANSACTION_PARTIALLY_REFUNDABLES",
+      "config": {
+        "transaction_rows": [
+          {
+            "id": message.values.rows[0].id,
+            "quantity": message.values.rows[0].payments[0].quantity
+          }
+        ],
+        "transaction_id": message.id
+      }
+    });
+
+    const options = {
+      method: 'POST',
+      headers: headers
+    };
+
+    const req = https.request(refundUrl, options, (res) => {
+      let data = '';
+      res.on('data', (chunk) => {
+        data += chunk;
+      });
+      res.on('end', () => {
+        try {
+          const responseJson = JSON.parse(data);
+          console.log("Refund response: ", responseJson);
+          resolve(responseJson);
+        } catch (e) {
+          reject(e);
+        }
+      });
+    });
+
+    req.on('error', (e) => {
+      console.log("Refund error log: ", e)
+      reject(e);
+    });
+
+    req.write(body);
+    req.end();
+  });
+}
+
 /*
  * MAIN
  */
 async function processMessage(message) {
   try {
-    console.log('Refund worker processing message:', JSON.stringify(message));
+    console.log('IMMEDIATE refund worker processing message:', JSON.stringify(message));
 
     const accessToken = await getAccessToken();
-    const refund = await sendRefund(accessToken, message);
-    console.log(`Refund for ${message.EPC}, result ${JSON.stringify(refund)}`);
+    // await sendRefund(accessToken, message);
+    // console.log(`Refund for ${message.EPC}, result ${JSON.stringify(refund)}`);
+    const refund = await sendImmediateRefund(accessToken, message);
+    console.log(`Immediate refund done`)
 
   } catch (error) {
     console.error('Error processing message:', error);
@@ -130,7 +222,8 @@ async function processMessage(message) {
 
 function waitForMessage() {
   //todo refundqueue:eventId
-  redis.blpop(`REFUND_QUEUE:1`, 0, async (err, [queue, messageString]) => {
+  // redis.blpop(`REFUND_QUEUE:1`, 0, async (err, [queue, messageString]) => {
+  redis.blpop(`IMMEDIATE_REFUND_QUEUE:1`, 0, async (err, [queue, messageString]) => {
     if (err) {
       console.error('Error popping message from refund list...', err);
       return;

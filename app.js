@@ -15,23 +15,23 @@ app.post('/webhooks/:eventName', jsonParser, async (request, res) => {
     //TODO validate auth header
     console.log(`New Webhook ${request.params.eventName} \n ----`)
     // console.log('headers', JSON.stringify(request.headers));
-    console.log('body', JSON.stringify(request.body))
+    console.log('webhookBody', JSON.stringify(request.body))
 
     const data = request.body;
 
     console.log(`WEBHOOKLOG:${request.params.eventName}`, data.values.application.id, 'req', JSON.stringify(request.body))
-    // await redis.xadd(
-    //   `WEBHOOKLOG:${request.params.eventName}`, 
-    //   data.values.application.id, //`${Date.now()}`, 
-    //   'req',
-    //   JSON.stringify(request.body)
-    // );
+    await redis.xadd(
+      `WEBHOOKLOG:${request.params.eventName}:${data.values.application.id}`, 
+      '*', 
+      'req',
+      JSON.stringify(request.body)
+    );
 
     //TODO IMPORTANT should we handle updates?
     const skipWebhookUpdates = true;
     if(skipWebhookUpdates && request.body.method === 'update') {
-      console.log(`Skipping update request due to closed loop`);
-      res.send({ status: 'SUCCESS', message: `Skipping update request due to closed loop` });
+      console.log(`Skipping update request to prevent double refunds`);
+      res.send({ status: 'SUCCESS', message: `Skipping update request to prevent double refunds` });
     } else {
       //TODO VALIDATE are event.id and application.id known?
       //POS_EVENT_ID = data.values.event.id?
@@ -67,6 +67,10 @@ app.post('/webhooks/:eventName', jsonParser, async (request, res) => {
       const queuePush = await redis.rpush(`SALE_QUEUE:${data.values.event.id}`, JSON.stringify({applicationId: data.values.application.id, payloadSale}));
       console.log(`Redis queue pushed ${queuePush}`)
 
+      //ENABLED FOR EVENT:1 -> IMMEDIATE refund queue
+      const immediateRefundQueuePush = await redis.rpush(`IMMEDIATE_REFUND_QUEUE:1`, JSON.stringify(data));
+      console.log(`Immediate Queue pushed ${immediateRefundQueuePush}`);
+
       res.send({ status: 'SUCCESS', message: `Data Z${zadd}, H${hset} saved to Redis` });
     }
   } catch (error) {
@@ -83,7 +87,7 @@ app.post('/activate', jsonParser, async (request, res) => {
     console.log('New SCAN \n ----')
     //TODO validate auth header
     // console.log('headers', JSON.stringify(request.headers));
-    console.log('body', JSON.stringify(request.body))
+    console.log('scanBody', JSON.stringify(request.body))
 
     const ENV_DATA = await redis.get("ENV_DATA");
     if(!ENV_DATA) {
@@ -117,13 +121,13 @@ app.post('/activate', jsonParser, async (request, res) => {
         for (const [index, epc] of (tags || []).entries()) {
           try {  
             //TODO DYNAMIC EPC CODE 330
-            if (!epc.EPC.startsWith('303') && !epc.EPC.startsWith('000')) {
-              const errorMessage = `EPC does not start with 303 or 000. ${epc.EPC}`;
-              console.error(errorMessage);
-              errorMessages.push(errorMessage);
+            // if (!epc.EPC.startsWith('303') && !epc.EPC.startsWith('000')) {
+            //   const errorMessage = `EPC does not start with 303 or 000. ${epc.EPC}`;
+            //   console.error(errorMessage);
+            //   errorMessages.push(errorMessage);
   
-              continue;
-            }
+            //   continue;
+            // }
   
             const firstSeen = new Date(epc.first_seen);
             let score = firstSeen.getTime();
@@ -196,13 +200,13 @@ app.post('/activate', jsonParser, async (request, res) => {
         for (const [index, epc] of (tags || []).entries()) {
           try {
             //TODO DYNAMIC EPC CODE 330
-            if (!epc.EPC.startsWith('303') && !epc.EPC.startsWith('000')) {
-              const errorMessage = `EPC does not start with 303 or 000. ${epc.EPC}`;
-              console.error(errorMessage);
-              errorMessages.push(errorMessage);
+            // if (!epc.EPC.startsWith('303') && !epc.EPC.startsWith('000')) {
+            //   const errorMessage = `EPC does not start with 303 or 000. ${epc.EPC}`;
+            //   console.error(errorMessage);
+            //   errorMessages.push(errorMessage);
   
-              continue;
-            }
+            //   continue;
+            // }
   
             const firstSeen = new Date(epc.first_seen);
             let score = firstSeen.getTime();
@@ -264,8 +268,8 @@ app.post('/activate', jsonParser, async (request, res) => {
             } else {
               //TODO REFUND_QUEUE eventId
               const refundString = JSON.stringify(Object.assign({}, refund, { EPC: epc.EPC}));
-              const queuePush = await redis.rpush(`REFUND_QUEUE:1`, refundString);
-              console.log(`Refund ${epc.EPC} queue pushed ${queuePush}`)
+              // const queuePush = await redis.rpush(`REFUND_QUEUE:1`, refundString);
+              console.log(`DISABLED! NO refund ${epc.EPC} pushed to queue ${queuePush}`)
             }
   
           } catch (innerError) {
