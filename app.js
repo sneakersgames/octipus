@@ -118,7 +118,6 @@ app.post('/activate', jsonParser, async (request, res) => {
     }
 
     const POS_DATA = JSON.parse(ENV_DATA).scanners.find(data => data.POSID === request.body.POSID);
-    const eventId = POS_DATA.eventId;
 
     const currentTime = Date.now();
 
@@ -127,6 +126,7 @@ app.post('/activate', jsonParser, async (request, res) => {
       console.error(errorMessage);
       throw new Error(errorMessage);
     } else if(POS_DATA.type) {
+      const eventId = POS_DATA.eventId;
 
       console.log(`SCANLOG:${request.body.POSID}`, `${currentTime}`, 'req', JSON.stringify(request.body));
       await redis.xadd(

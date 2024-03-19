@@ -13,6 +13,13 @@ const env_data = JSON.stringify({
   },
   scanners: [
     { 
+      POSID: '9636b833-0c07-4e8a-ae92-00029636b833',
+      name: 'TESTMAT MIRO',
+      applicationId: 1,
+      type: 'scan',
+      eventId: 'FTIKortrijk'
+    },
+    { 
       POSID: '3dcfe05f-0c07-4e8a-ae92-00023dcfe05f',
       name: '8907 - bar 6.04',
       applicationId: 58,
