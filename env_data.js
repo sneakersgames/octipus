@@ -173,6 +173,13 @@ const env_data = JSON.stringify({
       type: 'scan',
       eventId: 'FTIKortrijk'
     },
+    { 
+      POSID: '4418d496-0c07-4e8a-ae92-00024418d496',
+      name: '8950 - BAR LINKS POS10',
+      applicationId: 48,
+      type: 'scan',
+      eventId: 'FTIKortrijk'
+    },
   ]
 })
 
