@@ -35,8 +35,8 @@ const env_data = JSON.stringify({
     },
     { 
       POSID: 'ad60ebbc-0c07-4e8a-ae92-0002ad60ebbc',
-      name: '8982 - bar 11.04',
-      applicationId: 66,
+      name: '8982 - barco bar',
+      applicationId: 63,
       type: 'scan',
       eventId: 'FTIKortrijk'
     },
@@ -104,13 +104,6 @@ const env_data = JSON.stringify({
       eventId: 'FTIKortrijk'
     },
     { 
-      POSID: 'fd91c18e-0c07-4e8a-ae92-0000fd91c18e',
-      name: '8909 - bacardi bar',
-      applicationId: 63,
-      type: 'scan',
-      eventId: 'FTIKortrijk'
-    },
-    { 
       POSID: '8f51533a-0c07-4e8a-ae92-00008f51533a',
       name: '8902 - tails cocktail bar',
       applicationId: 67,
@@ -159,7 +152,7 @@ const env_data = JSON.stringify({
       type: 'bin',
       eventId: 'FTIKortrijk'
     },
-        { 
+    { 
       POSID: 'b028d758-0c07-4e8a-ae92-0001b028d758',
       name: '8981 - BAR LINKS POS2',
       applicationId: 62,

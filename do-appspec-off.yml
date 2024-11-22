@@ -26,14 +26,8 @@ services:
   health_check:
     port: 8080
   http_port: 8080
-  instance_count: 20
+  instance_count: 1
   instance_size_slug: professional-xs
-  autoscaling:
-      min_instance_count: 2
-      max_instance_count: 20
-      metrics:
-        cpu:
-          percent: 70
   log_destinations:
   - logtail:
       token: jroKVZey7N1pQRY7dMnBuPn9
@@ -41,24 +35,24 @@ services:
   name: octipus
   run_command: npm run start
   source_dir: /
-workers:
-- build_command: npm run build:digitalocean
-  github:
-    branch: main
-    deploy_on_push: true
-    repo: sneakersgames/octipus
-  instance_count: 1
-  instance_size_slug: professional-xs
-  name: activation-worker
-  run_command: node activation-worker.js
-  source_dir: /
-- build_command: npm run build:digitalocean
-  github:
-    branch: main
-    deploy_on_push: true
-    repo: sneakersgames/octipus
-  instance_count: 1
-  instance_size_slug: professional-xs
-  name: refund-worker
-  run_command: node refund-worker.js
-  source_dir: /
+# workers:
+# - build_command: npm run build:digitalocean
+#   github:
+#     branch: main
+#     deploy_on_push: true
+#     repo: sneakersgames/octipus
+#   instance_count: 1
+#   instance_size_slug: professional-xs
+#   name: activation-worker
+#   run_command: node activation-worker.js
+#   source_dir: /
+# - build_command: npm run build:digitalocean
+#   github:
+#     branch: main
+#     deploy_on_push: true
+#     repo: sneakersgames/octipus
+#   instance_count: 1
+#   instance_size_slug: professional-xs
+#   name: refund-worker
+#   run_command: node refund-worker.js
+#   source_dir: /

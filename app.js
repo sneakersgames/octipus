@@ -39,6 +39,18 @@ app.post('/webhooks/:eventName', jsonParser, async (request, res) => {
 
     const data = request.body;
 
+    if(saleContainsNegativeQuantity(data)) {
+      console.log(`WEBHOOKLOG:${request.params.eventName}:REFUND}`, '*', 'req', JSON.stringify(request.body))
+      await redis.xadd(
+        `WEBHOOKLOG:${request.params.eventName}:REFUND`, 
+        '*', 
+        'req',
+        JSON.stringify(request.body)
+      );
+      console.log(`Skipping webhook request due to negative quantity`);
+      res.send({ status: 'SUCCESS', message: `Skipping webhook request due to negative quantity` });
+    }
+    
     console.log(`WEBHOOKLOG:${request.params.eventName}:${data.values.application.id}`, '*', 'req', JSON.stringify(request.body))
     await redis.xadd(
       `WEBHOOKLOG:${request.params.eventName}:${data.values.application.id}`, 
@@ -47,10 +59,6 @@ app.post('/webhooks/:eventName', jsonParser, async (request, res) => {
       JSON.stringify(request.body)
     );
 
-    if(saleContainsNegativeQuantity(data)) {
-      console.log(`Skipping webhook request due to negative quantity`);
-      res.send({ status: 'SUCCESS', message: `Skipping webhook request due to negative quantity` });
-    }
     //TODO IMPORTANT should we handle updates?
     const skipWebhookUpdates = true;
     if(skipWebhookUpdates && request.body.method === 'update') {
@@ -72,7 +80,7 @@ app.post('/webhooks/:eventName', jsonParser, async (request, res) => {
       //TODO VALIDATE QUANTITY IS BIGGER THAN 0?
 
       const score = new Date(data.values.validated).getTime()
-      console.log(`Tijd van webhook: ${data.values.validated} - Tijd van score ${score}`)
+      console.log(`Webhook time: ${data.values.validated} (score ${score})`)
       const payloadSale = {
         soldAt: score,//milliseconds
         transaction_id: data.id,
